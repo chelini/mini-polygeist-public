@@ -1,0 +1,62 @@
+name: Mini-polygeist
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+env:
+  BUILD_TYPE: Release
+  LLVM_COMMIT: 9fa109a5088bff9e8eabf6d67d0650fbd3db27cb
+  CMAKE_FLAGS: '-DCMAKE_LINKER=lld -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DMLIR_DIR=$GITHUB_WORKSPACE/llvm-project/prefix/lib/cmake/mlir/ -DLLVM_DIR=$GITHUB_WORKSPACE/llvm-project/prefix/lib/cmake/llvm/ -DClang_DIR=$GITHUB_WORKSPACE/llvm-project/prefix/lib/cmake/clang/ -DLLVM_EXTERNAL_LIT=$GITHUB_WORKSPACE/llvm-project/build/bin/llvm-lit'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Ninja
+      run: sudo apt-get update && sudo apt-get install -y ninja-build && sudo apt install cmake -y && sudo apt install clang -y && sudo apt install lld -y
+
+    - name: Cache LLVM
+      id: cache-llvm
+      uses: actions/cache@v2
+      with:
+        path: |
+          llvm-project/build
+          llvm-project/prefix
+        key: ${{ runner.os }}-llvm-install-${{ env.LLVM_COMMIT }}
+
+    - name: Debug Cache Key
+      run: echo "Cache Key: ${{ runner.os }}-llvm-install-${{ env.LLVM_COMMIT }}"
+          
+    - name: Get LLVM
+      if: steps.cache-llvm.outputs.cache-hit != 'true'
+      uses: actions/checkout@v2
+      with:
+        repository: 'llvm/llvm-project'
+        ref: '${{ env.LLVM_COMMIT }}'
+        path: 'llvm-project'
+          
+    - name: Install LLVM
+      if: steps.cache-llvm.outputs.cache-hit != 'true'
+      run: |
+        mkdir $GITHUB_WORKSPACE/llvm-project/build
+        mkdir $GITHUB_WORKSPACE/llvm-project/prefix
+        cd $GITHUB_WORKSPACE/llvm-project/build
+        cmake $GITHUB_WORKSPACE/llvm-project/llvm -DCMAKE_BUILD_TYPE=MinSizeRel -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DLLVM_ENABLE_ASSERTIONS=ON -DLLVM_BUILD_EXAMPLES=OFF -DLLVM_TARGETS_TO_BUILD="host" -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/llvm-project/prefix -DLLVM_ENABLE_PROJECTS='mlir;clang' -DLLVM_ENABLE_OCAMLDOC=OFF -DLLVM_ENABLE_BINDINGS=OFF -DLLVM_INSTALL_UTILS=ON -DLLVM_ENABLE_LLD=ON
+        cmake --build . --target install -- -j$(nproc)
+        
+    - name: Configure CMake
+      run: cmake -B ${{github.workspace}}/build -G Ninja -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} ${{ env.CMAKE_FLAGS }}
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+
+    - name: Test
+      working-directory: ${{github.workspace}}/build
+      run: ninja check-mini-polygeist
+
