@@ -20,3 +20,5 @@ cmake ../ -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_LINKER=lld -DCMAKE_C_COMPILE
 ninja
 
 ```
+
+To run test: `ninja check-mini-polygeist` in the build directory.
