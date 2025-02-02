@@ -1,5 +1,10 @@
+# Simple clang-based tool
+
+Walk the clang AST and build MLIR IR.
+
 ```sh
 
+# Use this docker: https://hub.docker.com/layers/ftynse/mlir-tutorial/v3/images/sha256-0a946de4b3cfc2c808906e77ea9c71bac26c68a6fc30c17498f42e297bf15cff
 # Clone in /home/mlir
 
 git clone https://github.com/chelini/mini-polygeist-public.git
